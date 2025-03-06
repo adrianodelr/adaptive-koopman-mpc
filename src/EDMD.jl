@@ -54,6 +54,11 @@ mutable struct Dictionary
     end 
 end  
 
+function lifting(x::Vector, Ψ::Vector{Function})
+    z = vec([Ψ[k](x) for k in eachindex(Ψ)])
+    return z 
+end
+
 
 """
     EDMDModel(parent,bsize,p,h)
@@ -69,14 +74,12 @@ of type 'DoublePendulum' or 'SinglePendulum'.
 """
 # TODO : update documentation
 mutable struct EDMDModel
-    const parent::Union{DoublePendulum, SinglePendulum}
     buffer::Databuffer
     A::Matrix{Float64}
     B::Matrix{Float64}
     Ψ::Dictionary
-    function DDMLinearModel(parent,N,Ψ)
-        n,m = get_dims(parent)
-        # p = out of dict
+    function EDMDModel(m,N,Ψ)
+        p = Ψ.p
         A=zeros(p,p)
         B=zeros(p,m)
         buffer = Databuffer(N,m)
@@ -96,22 +99,20 @@ end
 Perform a regression on the lifted snapshot matrices 'X̃lift' and 'Ỹlift' to obtain the best fit linear operators 
 A,B relating both matrices in the controlled setting
 """
-function lifting_and_regression!(model::EDMDModel)
+function lifting_and_regression(model::EDMDModel)
     Ψ = model.Ψ
     p = model.p
-    N = model.buffer.N
     m = model.buffer.m
+    N = model.buffer.N
 
     X,X⁺,U=get_buffer_data(buffer::Databuffer)
 
     Z,Z⁺ = zeros(p,N-1),zeros(p,N-1)
     U = zeros(m, N-1)
 
-    for i in 1:m
-        for j in 1:N
-            Z[i,:].= vec([Ψ[i](X[i,k]) for k in eachindex(Ψ)])
-            Z⁺[i,:].= vec([Ψ[i](X⁺[i,k]) for k in eachindex(Ψ)])            
-        end 
+    for i in 1:N
+        Z[i,:].= lifting(X[i,:],Ψ) 
+        Z⁺[i,:].= lifting(X⁺[i,:],Ψ)             
     end
 
     for i in 1:m
@@ -123,3 +124,11 @@ function lifting_and_regression!(model::EDMDModel)
     model.A = K[:,1:p]
     model.B = K[:,p+1:end]
 end     
+
+
+
+Ψ1(x) = x[1]
+Ψ2(x) = x[2]
+Ψ3(x) = sin(x[2])
+
+Ψ = [Ψ1,Ψ2,Ψ3]
