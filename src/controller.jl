@@ -99,7 +99,9 @@ mutable struct adaptiveKMPC
     constr::Constraints 
     rbig::Vector
     H::Int
-    n̂::Int 
+    n̂::Int
+    x0::AbstractArray
+    u0::AbstractArray     
     solver 
     function adaptiveKMPC(model::EDMDModel,Q::Vector,Qf::Vector,R::Vector,r::Vector,H::Int,constr::Constraints)
         p,m = get_dims(model)
@@ -130,16 +132,16 @@ function get_control(x0::Vector, ctrl::adaptiveKMPC)
     
     Abig, Bbig = build_predmat(Â, B̂, H)
 
-    P,q = build_QP([ẑ0;ctrl.model.u0], rbig, ctrl.weights, Abig, Bbig)
+    P,q = build_QP([ẑ0;ctrl.u0], rbig, ctrl.weights, Abig, Bbig)
 
     ul,uu,CΔ = build_constraints(ẑ0, ctrl.constr, ctrl.model, ctrl.H)
 
     OSQP.update!(ctrl.solver, Px=triu(sparse(P)).nzval, q=vec(q), l=ul, u=uu, Ax=sparse(CΔ).nzval)
 
     Δu = OSQP.solve!(ctrl.solver).x
-    u = ctrl.model.u0 + Δu[1:ctrl.model.m]
+    u = ctrl.u0 + Δu[1:ctrl.model.m]
 
-    ctrl.model.u0 = u 
-    ctrl.model.x0 = x
+    ctrl.u0 = u 
+    ctrl.x0 = x
     return u 
 end  
