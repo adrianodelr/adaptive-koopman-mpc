@@ -54,7 +54,8 @@ mutable struct Dictionary
     end 
 end  
 
-function lifting(x::Vector, Ψ::Vector{Function})
+function lifting(x::Vector, dict::Dictionary)
+    Ψ = dict.Ψ
     z = vec([Ψ[k](x) for k in eachindex(Ψ)])
     return z 
 end
@@ -77,13 +78,13 @@ mutable struct EDMDModel
     buffer::Databuffer
     A::Matrix{Float64}
     B::Matrix{Float64}
-    Ψ::Dictionary
-    function EDMDModel(m,N,Ψ)
-        p = Ψ.p
+    dict::Dictionary
+    function EDMDModel(m,N,dict)
+        p = dict.p
         A=zeros(p,p)
         B=zeros(p,m)
         buffer = Databuffer(N,m)
-        new(parent,buffer,A,B,Ψ)
+        new(buffer,A,B,dict)
     end 
 end  
 
@@ -100,12 +101,12 @@ Perform a regression on the lifted snapshot matrices 'X̃lift' and 'Ỹlift' to 
 A,B relating both matrices in the controlled setting
 """
 function lifting_and_regression(model::EDMDModel)
-    Ψ = model.Ψ
-    p = model.p
+    Ψ = model.dict.Ψ
+    p = model.dict.p
     m = model.buffer.m
     N = model.buffer.N
 
-    X,X⁺,U=get_buffer_data(buffer::Databuffer)
+    X,X⁺,U=get_buffer_data(model.buffer)
 
     Z,Z⁺ = zeros(p,N-1),zeros(p,N-1)
     U = zeros(m, N-1)
@@ -124,11 +125,3 @@ function lifting_and_regression(model::EDMDModel)
     model.A = K[:,1:p]
     model.B = K[:,p+1:end]
 end     
-
-
-
-Ψ1(x) = x[1]
-Ψ2(x) = x[2]
-Ψ3(x) = sin(x[2])
-
-Ψ = [Ψ1,Ψ2,Ψ3]

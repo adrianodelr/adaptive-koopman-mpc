@@ -22,13 +22,12 @@ mutable struct nPendulum
         @assert length(m)!= 1 || length(m)!= 2 "Current implementation only single and double pendulum dynamics."
         if length(m)== 1 println("building simple pendulum") end 
         if length(m)== 2 println("building double pendulum") end 
-        new(m,l,lcom,I,length(m))
+        new(m,l,lcom,I,2length(m))
     end 
 end 
 
 function forward_dynamics_single_pendulum(x::Vector, u::Vector, model::nPendulum; g::Float64=9.81)
     lcom1,m1,I1=model.lcom[1],model.m[1],model.I[1]
-    
     θ1d = x[2]
     ω1d = 1/I1 * (u[1] - m1*g*lcom1*sin(x[1])) 
     return [θ1d;ω1d]    
@@ -71,21 +70,11 @@ function rk4(x, u, h, dynamics::Function)
 end  
 
 function simulate(x::Vector, u::Vector, h::Float64, model::nPendulum)
-    if model.n==1
+    if model.n==2
         return rk4(x, u, h, (x,u) -> forward_dynamics_single_pendulum(x, u, model))
-    elseif model.n==2 
+    elseif model.n==4 
         return rk4(x, u, h, (x,u) -> forward_dynamics_double_pendulum(x, u, model))
     end 
 end 
 
 
-sp = nPendulum([1],[1],[1],[1]);
-x0 = [π,0]
-u0 = [0] 
-h = 0.01
-
-xn = x0
-for i in 1:400
-    xn = simulate(xn, u0, h, sp)
-    println(xn)
-end 
