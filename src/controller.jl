@@ -27,39 +27,6 @@ function build_predmat(Â::AbstractArray, B̂::AbstractArray, H::Int)
     return Abig,Bbig
 end 
 
-# struct PredictionMatrices
-#     Abig::AbstractArray
-#     Bbig::AbstractArray
-#     function PredictionMatrices(Â::AbstractArray, B̂::AbstractArray, H::Int)
-#         n = size(Â,1)
-#         m = size(B̂,2)        
-#         Abig=zeros(H*n,n);
-#         Bbig=zeros(H*n,H*m);
-#         for i=1:H
-#             Abig[(1+(i-1)*n):i*n,1:n]=Â^i;
-#             for j=1:H            
-#                 if(i>=j)                
-#                     Bbig[(1+(i-1)*n):i*n,(1+(j-1)*m):j*m] = Â^(i-j)*B̂;                
-#                 end
-#             end
-#         end
-#         return new(Abig,Bbig)
-#     end 
-# end
-
-# mutable struct LTImodel
-#     A::AbstractArray
-#     B::AbstractArray
-#     n::Int
-#     m::Int 
-#     x0::AbstractArray
-#     u0::AbstractArray
-#     function LTImodel(A::AbstractArray,B::AbstractArray)
-#         n = size(A,1)
-#         m = size(B,2)
-#         return new(A,B,n,m,zeros(n),zeros(m))
-#     end 
-# end 
 
 struct Constraints 
     umax::AbstractArray
@@ -75,8 +42,6 @@ struct Constraints
 end
 
 function build_QP(ẑ0::Vector, rbig::Vector, w::QPweights, Abig::AbstractArray, Bbig::AbstractArray)
-    println(size(Bbig'))
-    println(size(w.Q))
     P = Bbig'*w.Q*Bbig + w.R
     q = 2Bbig'*w.Q*(Abig*ẑ0 - rbig)
     return P,q    
@@ -125,26 +90,31 @@ mutable struct adaptiveKMPC
     end 
 end
 
+function update_buffer!(x::AbstractArray,u::AbstractArray,t::Union{AbstractArray, Float64},ctrl::adaptiveKMPC)
+    update_buffer!(x,u,t,ctrl.model.buffer)
+end 
+
+
 function get_control(x0::Vector, ctrl::adaptiveKMPC)
         
     ẑ0 = lifting(x0, ctrl.model.dict)
     lifting_and_regression(ctrl.model)
 
-    Â,B̂ = augment_model(model)
+    Â,B̂ = augment_model(ctrl.model)
     
     Abig, Bbig = build_predmat(Â, B̂, H)
 
-    P,q = build_QP([ẑ0;ctrl.u0], rbig, ctrl.weights, Abig, Bbig)
+    P,q = build_QP([ẑ0;ctrl.u0], ctrl.rbig, ctrl.weights, Abig, Bbig)
 
-    ul,uu,CΔ = build_constraints(ctrl)
+    CΔ,u_l,u_u, = build_constraints(ctrl)
 
-    OSQP.update!(ctrl.solver, Px=triu(sparse(P)).nzval, q=vec(q), l=ul, u=uu, Ax=sparse(CΔ).nzval)
+    OSQP.update!(ctrl.solver, Px=triu(sparse(P)).nzval, q=vec(q), l=u_l, u=u_u, Ax=sparse(CΔ).nzval)
 
     Δu = OSQP.solve!(ctrl.solver).x
-    u = ctrl.u0 + Δu[1:ctrl.model.m]
+    u = ctrl.u0 + Δu[1:ctrl.model.buffer.m]
 
     ctrl.u0 = u 
-    ctrl.z0 = lifting(x0, ctrl.model.dict.Ψ)
+    ctrl.z0 = lifting(x0, ctrl.model.dict)
     return u 
 end  
 
@@ -155,7 +125,7 @@ end
 Build input constraints of the form lu <= Au * u <= uu.
 """
 function build_constraints(ctrl::adaptiveKMPC)
-    lu = ctrl.constr.umin - repeat(ctrl.u0,H)  
-    uu = ctrl.constr.umax - repeat(ctrl.u0,H)      
-    return CΔ,lu,uu
+    u_l = ctrl.constr.umin - repeat(ctrl.u0,H)  
+    u_u = ctrl.constr.umax - repeat(ctrl.u0,H)      
+    return ctrl.constr.CΔ,u_l,u_u
 end 

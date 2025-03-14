@@ -24,18 +24,28 @@ mutable struct Databuffer
     end 
 end 
 
-function updateBuffer!(x,u,t,buffer::Databuffer)
-    N = model.buffer.N
-    m = model.buffer.m
-    for _ in 1:N 
-        push!(buffer.t, t)        
+function update_buffer!(x::AbstractArray, u::AbstractArray, t::Union{AbstractArray, Float64}, buffer::Databuffer)
+    Nx = size(x,2)
+    Nu = size(u,2)
+    m = buffer.m
+    for i in 1:Nx 
+        if isone(Nx)  
+            push!(buffer.t, t)
+        else 
+            push!(buffer.t, t[i])
+        end 
         for j in 1:m
-            push!(buffer.θ[j], x[j])
-            push!(buffer.v[j], x[j+m])            
-            push!(buffer.u[j], u[j])            
+            push!(buffer.θ[j], x[j,i])
+            push!(buffer.v[j], x[j+m,i])            
+        end 
+    end 
+    for i in 1:Nu
+        for j in 1:m
+            push!(buffer.u[j], u[j,i])
         end 
     end
 end 
+
 
 """
     Dictionary(Ψ::Vector{Function})
@@ -89,8 +99,17 @@ mutable struct EDMDModel
 end  
 
 function get_buffer_data(buffer::Databuffer)
-    X,X⁺ = zeros(2buffer.m, buffer.N-1)
+    X,X⁺ = zeros(2buffer.m, buffer.N-1),zeros(2buffer.m, buffer.N-1)
     U = zeros(buffer.m, buffer.N-1)
+    
+    X[1,:] = buffer.θ[1][1:end-1]'
+    X[2,:] = buffer.v[1][1:end-1]'
+
+    X⁺[1,:] = buffer.θ[1][2:end]'
+    X⁺[2,:] = buffer.v[1][2:end]'
+
+    U[1,:] = buffer.u[1]'
+
     return X,X⁺,U
 end 
 
@@ -101,7 +120,7 @@ Perform a regression on the lifted snapshot matrices 'X̃lift' and 'Ỹlift' to 
 A,B relating both matrices in the controlled setting
 """
 function lifting_and_regression(model::EDMDModel)
-    Ψ = model.dict.Ψ
+    # Ψ = model.dict.Ψ
     p = model.dict.p
     m = model.buffer.m
     N = model.buffer.N
@@ -109,15 +128,10 @@ function lifting_and_regression(model::EDMDModel)
     X,X⁺,U=get_buffer_data(model.buffer)
 
     Z,Z⁺ = zeros(p,N-1),zeros(p,N-1)
-    U = zeros(m, N-1)
 
-    for i in 1:N
-        Z[i,:].= lifting(X[i,:],Ψ) 
-        Z⁺[i,:].= lifting(X⁺[i,:],Ψ)             
-    end
-
-    for i in 1:m
-        U[i,:].=model.buffer.u[i]
+    for i in 1:N-1
+        Z[:,i] .= lifting(X[:,i],model.dict) 
+        Z⁺[:,i].= lifting(X⁺[:,i],model.dict)             
     end
 
     Ω = [Z;U]
