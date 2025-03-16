@@ -84,17 +84,13 @@ of type 'DoublePendulum' or 'SinglePendulum'.
 - `h::Float64`: The sampling intervall length a.k.a discretization time.
 """
 # TODO : update documentation
-mutable struct EDMDModel
+mutable struct EDMDParameters
     buffer::Databuffer
-    A::Matrix{Float64}
-    B::Matrix{Float64}
     dict::Dictionary
-    function EDMDModel(m,N,dict)
+    function EDMDParameters(m,N,dict)
         p = dict.p
-        A=zeros(p,p)
-        B=zeros(p,m)
         buffer = Databuffer(N,m)
-        new(buffer,A,B,dict)
+        new(buffer,dict)
     end 
 end  
 
@@ -102,13 +98,15 @@ function get_buffer_data(buffer::Databuffer)
     X,X⁺ = zeros(2buffer.m, buffer.N-1),zeros(2buffer.m, buffer.N-1)
     U = zeros(buffer.m, buffer.N-1)
     
-    X[1,:] = buffer.θ[1][1:end-1]'
-    X[2,:] = buffer.v[1][1:end-1]'
+    for i in 1:buffer.m        
+        X[i,:]   = buffer.θ[i][1:end-1]'
+        X[i+m,:] = buffer.v[i][1:end-1]'
 
-    X⁺[1,:] = buffer.θ[1][2:end]'
-    X⁺[2,:] = buffer.v[1][2:end]'
+        X⁺[i,:]   = buffer.θ[i][2:end]'
+        X⁺[i+m,:] = buffer.v[i][2:end]'
 
-    U[1,:] = buffer.u[1]'
+        U[i,:] = buffer.u[i]'
+    end 
 
     return X,X⁺,U
 end 
@@ -119,23 +117,23 @@ end
 Perform a regression on the lifted snapshot matrices 'X̃lift' and 'Ỹlift' to obtain the best fit linear operators 
 A,B relating both matrices in the controlled setting
 """
-function lifting_and_regression(model::EDMDModel)
-    # Ψ = model.dict.Ψ
-    p = model.dict.p
-    m = model.buffer.m
-    N = model.buffer.N
+function EDMD(param::EDMDParameters)
+    p = param.dict.p
+    m = param.buffer.m
+    N = param.buffer.N
 
-    X,X⁺,U=get_buffer_data(model.buffer)
+    X,X⁺,U=get_buffer_data(param.buffer)
 
     Z,Z⁺ = zeros(p,N-1),zeros(p,N-1)
 
     for i in 1:N-1
-        Z[:,i] .= lifting(X[:,i],model.dict) 
-        Z⁺[:,i].= lifting(X⁺[:,i],model.dict)             
+        Z[:,i] .= lifting(X[:,i],param.dict) 
+        Z⁺[:,i].= lifting(X⁺[:,i],param.dict)             
     end
 
     Ω = [Z;U]
     K = Z⁺*pinv(Ω)
-    model.A = K[:,1:p]
-    model.B = K[:,p+1:end]
+    A = K[:,1:p]
+    B = K[:,p+1:end]
+    return A, B
 end     

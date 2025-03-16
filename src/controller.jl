@@ -1,7 +1,7 @@
-struct QPweights
+struct Weights
     Q::AbstractArray
     R::AbstractArray
-    function QPweights(Q::Vector, Qf::Vector, R::Vector, H::Int)
+    function Weights(Q::Vector, Qf::Vector, R::Vector, H::Int)
         Qf = diagm(Qf)
         n = length(Q)
         Q = diagm(repeat(Q, inner=[1,1], outer=[1,H]) |> vec)
@@ -14,118 +14,139 @@ end
 function build_predmat(Â::AbstractArray, B̂::AbstractArray, H::Int)
     n = size(Â,1)
     m = size(B̂,2)        
-    Abig=zeros(H*n,n);
-    Bbig=zeros(H*n,H*m);
+    A_bold=zeros(H*n,n);
+    B_bold=zeros(H*n,H*m);
     for i=1:H
-        Abig[(1+(i-1)*n):i*n,1:n]=Â^i;
+        A_bold[(1+(i-1)*n):i*n,1:n]=Â^i;
         for j=1:H            
             if(i>=j)                
-                Bbig[(1+(i-1)*n):i*n,(1+(j-1)*m):j*m] = Â^(i-j)*B̂;                
+                B_bold[(1+(i-1)*n):i*n,(1+(j-1)*m):j*m] = Â^(i-j)*B̂;                
             end
         end
     end
-    return Abig,Bbig
+    return A_bold,B_bold
 end 
-
 
 struct Constraints 
-    umax::AbstractArray
-    umin::AbstractArray
+    ul_bold_const::AbstractArray
+    uu_bold_const::AbstractArray
     CΔ::AbstractArray
-    function Constraints(umax::AbstractArray,umin::AbstractArray,H::Int)
+    function Constraints(ul::AbstractArray,uu::AbstractArray,H::Int)
         m = length(umin)
-        umax  = repeat(umax,H)
-        umin  = repeat(umin,H)
+        ul_bold_const  = kron(ones(H), ul)              # constant part of lower bound on u 
+        uu_bold_const  = kron(ones(H), uu)              # constant part of upper bound on u 
         CΔ    = kron(ones(H,H)|>tril, I(m))
-        return new(umax,umin,CΔ)
+        return new(ul_bold_const,uu_bold_const,CΔ)
     end 
 end
 
-function build_QP(ẑ0::Vector, rbig::Vector, w::QPweights, Abig::AbstractArray, Bbig::AbstractArray)
-    P = Bbig'*w.Q*Bbig + w.R
-    q = 2Bbig'*w.Q*(Abig*ẑ0 - rbig)
-    return P,q    
-end 
+function build_qp(A::AbstractArray, B::AbstractArray, Ψ_r::AbstractArray, weights::Weights, H::Int,z0::Vector, uₖ₋₁::Vector)
 
-function get_dims(model::EDMDModel)
-    return model.dict.p, model.buffer.m 
+    p,m = length(z0), length(uₖ₋₁)
+
+    Â,B̂ = augment_model(A, B)
+    A_bold, B_bold = build_predmat(Â, B̂, H)
+    
+    ẑ0 = [z0;uₖ₋₁]
+    
+    r_bold = zeros((p+m)*H)
+    for i in 1:H
+        istart = (i-1)*(p+m)+1
+        r_bold[istart:istart+p-1] .= Ψ_r[:,i]
+    end 
+    Q_bold, R_bold = weights.Q, weights.R
+
+    P = B_bold'*Q_bold*B_bold + R_bold
+    q = 2B_bold'*Q_bold*(A_bold*ẑ0 - r_bold)
+
+    return P, q
 end  
 
-function augment_model(model::EDMDModel)
-    p,m = get_dims(model)
-    Â = [model.A model.B; zeros(m,p) I(m)]
-    B̂ = [model.B; I(m)]
+function get_dims(param::EDMDParameters)
+    return param.dict.p, param.buffer.m 
+end  
+
+function augment_model(A::AbstractArray, B::AbstractArray)
+    p,m = size(B) 
+    Â = [A B; zeros(m,p) I(m)]
+    B̂ = [B; I(m)]
     return Â,B̂
-end 
+end  
 
-mutable struct adaptiveKMPC
-    model::EDMDModel
-    Abig::AbstractArray
-    Bbig::AbstractArray
-    weights::QPweights
+
+mutable struct AdaptiveKMPC
+    edmd_params::EDMDParameters                    
+    weights::Weights                  
+    Ψ_r::AbstractArray
     H::Int
-    n̂::Int
-    rbig::Vector
     constr::Constraints 
-    z0::AbstractArray
-    u0::AbstractArray     
+    uₖ₋₁::AbstractArray     
     solver 
-    function adaptiveKMPC(model::EDMDModel,Q::Vector,Qf::Vector,R::Vector,r::Vector,H::Int,constr::Constraints)
-        p,m = get_dims(model)
-        Ψ = model.dict.Ψ
-        n̂ = p+m
+    function AdaptiveKMPC(edmd_params::EDMDParameters,Q::Vector,Qf::Vector,R::Vector,r::AbstractArray,H::Int,constr::Constraints)
         
-        Â,B̂ = augment_model(model)                                  # from eq. (7) 
-        weights = QPweights([Q;zeros(m)], [Qf;zeros(m)], R, H)
-        Abig, Bbig = build_predmat(Â, B̂, H)               
-
-        rbig = repeat([lifting(r,dict);zeros(m)],H)
-        P,q = build_QP(zeros(n̂), rbig, weights, Abig, Bbig)
-        
-        ul,uu,CΔ = constr.umin, constr.umax, constr.CΔ
+        # initialize QP (required by OSQP, since sparsity pattern is 'locked in' when calling OSQP setup function) 
+        p,m = get_dims(edmd_params)
+        _,N = size(r)
+        weights = Weights([Q;zeros(m)], [Qf;zeros(m)], R, H)
+        Ψ_r = zeros(p,N)
+        for i in 1:N
+            Ψ_r[:,i] .= lifting(r[:,i],edmd_params.dict) 
+        end
+        A = ones(p,p)
+        B = ones(p,m)
+        P,q = build_qp(A, B, Ψ_r, weights, H, ones(p), ones(m))
+        ul_bold, uu_bold, CΔ = constr.umin, constr.umax, constr.CΔ
 
         solver = OSQP.Model()
-        OSQP.setup!(solver, P=sparse(P), q=vec(q), A=SparseMatrixCSC(CΔ),l=ul, u=uu, verbose=false, warm_start=true)  
-        return new(model, Abig, Bbig, weights, H, n̂, rbig, constr, zeros(p), zeros(m), solver)
+        OSQP.setup!(solver, P=sparse(P), q=vec(q), A=SparseMatrixCSC(CΔ),l=ul_bold, u=uu_bold, verbose=false, warm_start=true)  
+
+        return new(edmd_params, weights, Ψ_r, H, constr, zeros(m), solver)
     end 
 end
 
-function update_buffer!(x::AbstractArray,u::AbstractArray,t::Union{AbstractArray, Float64},ctrl::adaptiveKMPC)
-    update_buffer!(x,u,t,ctrl.model.buffer)
+function update_buffer!(x::AbstractArray,u::AbstractArray,t::Union{AbstractArray, Float64},ctrl::AdaptiveKMPC)
+    update_buffer!(x,u,t,ctrl.edmd_params.buffer)
 end 
 
 
-function get_control(x0::Vector, ctrl::adaptiveKMPC)
-        
-    ẑ0 = lifting(x0, ctrl.model.dict)
-    lifting_and_regression(ctrl.model)
-
-    Â,B̂ = augment_model(ctrl.model)
+function get_control(x0::Vector, k::Int, ctrl::AdaptiveKMPC)
     
-    Abig, Bbig = build_predmat(Â, B̂, H)
+    # get internal model 
+    z0 = lifting(x0, ctrl.edmd_params.dict)
+    A,B = EDMD(ctrl.edmd_params)
+    
+    # build QP     
+    H = ctrl.H 
+    p, m = get_dims(ctrl.edmd_params)
+    Ψ_r = zeros(p,H)
+    _,N = size(ctrl.Ψ_r) 
+    for i in k:k+H-1
+        if i <= N 
+            Ψ_r[:,i-k+1] = ctrl.Ψ_r[:,i]
+        else
+            Ψ_r[:,i-k+1] = ctrl.Ψ_r[:,end]
+        end 
+    end
+    P, q = build_qp(A, B, Ψ_r, ctrl.weights, H, z0, ctrl.uₖ₋₁)
+    CΔ, ul_bold, uu_bold = build_constraints(ctrl)
+    OSQP.update!(ctrl.solver, Px=triu(sparse(P)).nzval, q=vec(q), l=ul_bold, u=uu_bold, Ax=sparse(CΔ).nzval)
+    
+    # solve QP 
+    δu_bold = OSQP.solve!(ctrl.solver).x
+    uk = ctrl.uₖ₋₁ + δu_bold[1:m]
+    ctrl.uₖ₋₁ = uk 
 
-    P,q = build_QP([ẑ0;ctrl.u0], ctrl.rbig, ctrl.weights, Abig, Bbig)
-
-    CΔ,u_l,u_u, = build_constraints(ctrl)
-
-    OSQP.update!(ctrl.solver, Px=triu(sparse(P)).nzval, q=vec(q), l=u_l, u=u_u, Ax=sparse(CΔ).nzval)
-
-    Δu = OSQP.solve!(ctrl.solver).x
-    u = ctrl.u0 + Δu[1:ctrl.model.buffer.m]
-
-    ctrl.u0 = u 
-    ctrl.z0 = lifting(x0, ctrl.model.dict)
-    return u 
-end  
+    return uk 
+end   
 
 
 """ 
     build_constraints(umax,umin,hx,m)
 
-Build input constraints of the form lu <= Au * u <= uu.
+Build input Constraints of the form lu <= Au * u <= uu.
 """
-function build_constraints(ctrl::adaptiveKMPC)
-    u_l = ctrl.constr.umin - repeat(ctrl.u0,H)  
-    u_u = ctrl.constr.umax - repeat(ctrl.u0,H)      
-    return ctrl.constr.CΔ,u_l,u_u
+function build_constraints(ctrl::AdaptiveKMPC)
+    ul_bold = ctrl.constr.ul_bold_const - repeat(ctrl.uₖ₋₁, ctrl.H)  
+    uu_bold = ctrl.constr.uu_bold_const - repeat(ctrl.uₖ₋₁, ctrl.H)      
+    return ctrl.constr.CΔ, ul_bold, uu_bold
 end 
