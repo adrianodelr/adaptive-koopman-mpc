@@ -5,6 +5,8 @@ using BlockArrays, SparseArrays
 using DataStructures: CircularBuffer
 using PCHIPInterpolation
 using JLD2 
+using LaTeXStrings  
+using ForwardDiff
 
 using CairoMakie
 import GLMakie as GL
@@ -15,3 +17,5 @@ CairoMakie.activate!()
 include("model.jl") 
 include("EDMD.jl")  
 include("controller.jl")       
+include("plotting.jl")       
+

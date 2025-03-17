@@ -77,4 +77,12 @@ function simulate(x::Vector, u::Vector, h::Float64, model::nPendulum)
     end 
 end 
 
+function linearize_discretize_dynamics(x::Vector,u::Vector, h, model::nPendulum)
+    A = ForwardDiff.jacobian(x_-> simulate(x_, u, h, model),x)
+    B = ForwardDiff.jacobian(u_-> simulate(x, u_, h, model),u)    
+    return A,B
+end  
+
+
+
 
