@@ -9,23 +9,27 @@ function plot_tracking_results((x_akmpc,u_akmpc,t_akmpc),(x_skmpc,u_skmpc,t_skmp
     linew = 3
 
     if size(x_akmpc)[1] == 2
-        fig = Figure(fontsize = 30, size=(2200, 550))
-        ga = fig[2,1:2]= GridLayout() 
+        fig = Figure(fontsize = 30, size=(2200, 1200))
+        ga = fig[1:2,1]= GridLayout() 
         
         # θ_1
         ax1b = Axis(ga[1,1], xlabel=L"t (s)",ylabel=L"$θ_1$ (rad)", width=1000,height=500,ytickformat = "{:.0f}")
-        x1a = lines!(ax1b, t_akmpc[:], x_akmpc[1,:], color=red_plot, linewidth=linew)
-        x1l = lines!(ax1b, t_lmpc[:], x_lmpc[1,:], color=yellow_plot, linewidth=linew)
         x1s = lines!(ax1b, t_skmpc[:], x_skmpc[1,:], color="gray", linewidth=linew)
+        x1l = lines!(ax1b, t_lmpc[:], x_lmpc[1,:], color=yellow_plot, linewidth=linew/2)
+        x1a = lines!(ax1b, t_akmpc[:], x_akmpc[1,:], color=red_plot, linewidth=linew)
         x1r = lines!(ax1b, t_ref[:], x_ref[1,:], color="black", linestyle=(:dash, :dense), linewidth=linew)
         
         # u_1 
-        ax2b= Axis(ga[1,2], xlabel=L"t (s)",ylabel=L"$u_1$ (Nm)", width=1000,height=500,ytickformat = "{:.1f}")
-        x1a = lines!(ax2b, t_akmpc[1:end-1], u_akmpc[1,:], color=red_plot, linewidth=linew)
+        ax2b= Axis(ga[2,1], xlabel=L"t (s)",ylabel=L"$u_1$ (Nm)", width=1000,height=500,ytickformat = "{:.1f}")
         x1s = lines!(ax2b, t_skmpc[1:end-1], u_skmpc[1,:], color="gray", linewidth=linew)
         x1l = lines!(ax2b, t_lmpc[1:end-1], u_lmpc[1,:], color=yellow_plot, label=L"$$linearization",linewidth=linew)
-        
-        Legend(fig[1,1], [x1r, x1l, x1a, x1s], [L"$$reference", L"$$linearization MPC", L"$$adaptive KMPC", L"$$static KMPC"], orientation = :horizontal)
+        x1a = lines!(ax2b, t_akmpc[1:end-1], u_akmpc[1,:], color=red_plot, linewidth=linew)
+
+        hidexdecorations!(ax1b, ticks = true, grid=false)
+        rowgap!(ga, 0)
+        colgap!(ga, 0)
+
+        Legend(fig[1,2], [x1r, x1l, x1a, x1s], [L"$$reference", L"$$linearization MPC", L"$$adaptive KMPC", L"$$static KMPC"])
         # axislegend(ax1b, [x1r, x1l, x1a, x1s], [L"$$reference", L"$$linearization MPC", L"$$adaptive KMPC", L"$$static KMPC"], orientation = :horizontal)
 
     elseif size(x_akmpc)[1] == 4
