@@ -34,10 +34,10 @@ function forward_dynamics_single_pendulum(x::Vector, u::Vector, model::nPendulum
 end 
 
 function forward_dynamics_double_pendulum(x::Vector, u::Vector, model::nPendulum; g::Float64=9.81)
-    lcom1,m1,I1=model.lcom[1],model.m[1],model.I[1]
-    lcom2,m2,I2=model.lcom[2],model.m[2],model.I[2]
+    l1,lcom1,m1,I1=model.l[1],model.lcom[1],model.m[1],model.I[1]
+    l2,lcom2,m2,I2=model.l[2],model.lcom[2],model.m[2],model.I[2]
     q=x[1:2]
-    v=x[2:4]
+    v=x[3:4]
     m11 = I1 + I2 + l1^2*m2 + 2*l1*lcom2*m2*cos(q[2])  
     m22 = I2 
     m12 = I2 + l1*lcom2*m2*cos(q[2])
@@ -50,7 +50,7 @@ function forward_dynamics_double_pendulum(x::Vector, u::Vector, model::nPendulum
     g2 = g*m2*lcom2*sin(sum(q))
     G = [g1;g2]                 # gravity vector 
 
-    θd = x[2]
+    θd = v
     ωd = M\(u - C - G)    
     return [θd;ωd]    
 end

@@ -100,10 +100,10 @@ function get_buffer_data(buffer::Databuffer)
     
     for i in 1:buffer.m        
         X[i,:]   = buffer.θ[i][1:end-1]'
-        X[i+m,:] = buffer.v[i][1:end-1]'
+        X[i+buffer.m,:] = buffer.v[i][1:end-1]'
 
         X⁺[i,:]   = buffer.θ[i][2:end]'
-        X⁺[i+m,:] = buffer.v[i][2:end]'
+        X⁺[i+buffer.m,:] = buffer.v[i][2:end]'
 
         U[i,:] = buffer.u[i]'
     end 
