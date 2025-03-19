@@ -1,4 +1,5 @@
 ## Code for adaptive and static KMPC 
+# TODO : write documentation
 struct Weights
     Q::AbstractArray
     R::AbstractArray
@@ -12,6 +13,7 @@ struct Weights
     end 
 end 
 
+# TODO : write documentation
 function build_predmat(Â::AbstractArray, B̂::AbstractArray, H::Int)
     n = size(Â,1)
     m = size(B̂,2)        
@@ -28,6 +30,7 @@ function build_predmat(Â::AbstractArray, B̂::AbstractArray, H::Int)
     return A_bold,B_bold
 end 
 
+# TODO : write documentation
 struct Constraints 
     ul_bold_const::AbstractArray
     uu_bold_const::AbstractArray
@@ -41,6 +44,7 @@ struct Constraints
     end 
 end
 
+# TODO : write documentation
 function build_qp(A::AbstractArray, B::AbstractArray, Ψ_r::AbstractArray, weights::Weights, H::Int,z0::Vector, uₖ₋₁::Vector)
 
     p,m = length(z0), length(uₖ₋₁)
@@ -63,10 +67,12 @@ function build_qp(A::AbstractArray, B::AbstractArray, Ψ_r::AbstractArray, weigh
     return P, q
 end  
 
+# TODO : write documentation
 function get_dims(param::EDMDParameters)
     return param.dict.p, param.buffer.m 
 end  
 
+# TODO : write documentation
 function augment_model(A::AbstractArray, B::AbstractArray)
     p,m = size(B) 
     Â = [A B; zeros(m,p) I(m)]
@@ -74,6 +80,7 @@ function augment_model(A::AbstractArray, B::AbstractArray)
     return Â,B̂
 end  
 
+# TODO : write documentation
 mutable struct AdaptiveKMPC
     edmd_params::EDMDParameters                    
     weights::Weights                  
@@ -104,11 +111,12 @@ mutable struct AdaptiveKMPC
     end 
 end
 
+# TODO : write documentation
 function update_buffer!(x::AbstractArray,u::AbstractArray,t::Union{AbstractArray, Float64},ctrl::AdaptiveKMPC)
     update_buffer!(x,u,t,ctrl.edmd_params.buffer)
 end 
 
-
+# TODO : write documentation
 function get_control(x0::Vector, k::Int, ctrl::AdaptiveKMPC)
     
     # get internal model 
@@ -141,7 +149,10 @@ end
 
 
 
-## Code for linearization MPC  
+## Code for linearization MPC
+# TODO: add source to see how linearization controller is formulated  
+
+# TODO : write documentation  
 function build_predmat_linearized(Â::AbstractArray, B̂::AbstractArray, H::Int)
     n = size(Â,1)
     m = size(B̂,2)        
@@ -162,6 +173,7 @@ function build_predmat_linearized(Â::AbstractArray, B̂::AbstractArray, H::Int
     return A_bold,B_bold,E_bold
 end  
 
+# TODO : write documentation
 function build_qp(A::AbstractArray, B::AbstractArray, K::AbstractArray, r::AbstractArray, weights::Weights, H::Int, x0::Vector, uₖ₋₁::Vector)
 
     n,m = length(x0), length(uₖ₋₁)
@@ -184,10 +196,12 @@ function build_qp(A::AbstractArray, B::AbstractArray, K::AbstractArray, r::Abstr
     return P, q
 end  
 
+# TODO : write documentation
 function get_dims(param::EDMDParameters)
     return param.dict.p, param.buffer.m 
 end  
 
+# TODO : write documentation
 function augment_model(A::AbstractArray, B::AbstractArray, K::AbstractArray)
     n,m = size(B) 
     Â = [A B; zeros(m,n) I(m)]
@@ -196,6 +210,7 @@ function augment_model(A::AbstractArray, B::AbstractArray, K::AbstractArray)
     return Â,B̂,K̂ 
 end  
 
+# TODO : write documentation
 mutable struct linearizationMPC
     model::nPendulum                    
     weights::Weights                  
@@ -223,7 +238,7 @@ mutable struct linearizationMPC
     end 
 end
 
-
+# TODO : write documentation
 function get_control(x0::Vector, k::Int, ctrl::linearizationMPC)
     
     # obtain A and B matrix by linearization + constant offset term from linearization 
@@ -254,11 +269,7 @@ function get_control(x0::Vector, k::Int, ctrl::linearizationMPC)
 end   
 
 
-""" 
-    build_constraints(umax,umin,hx,m)
-
-Build input Constraints of the form lu <= Au * u <= uu.
-"""
+# TODO : write documentation
 function build_constraints(ctrl::Union{AdaptiveKMPC,linearizationMPC})
     ul_bold = ctrl.constr.ul_bold_const - repeat(ctrl.uₖ₋₁, ctrl.H)  
     uu_bold = ctrl.constr.uu_bold_const - repeat(ctrl.uₖ₋₁, ctrl.H)      

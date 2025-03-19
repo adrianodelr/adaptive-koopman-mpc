@@ -13,7 +13,8 @@ import GLMakie as GL
 
 # Ensure standard backend Cairo is activated  
 CairoMakie.activate!()  
- 
+
+# TODO: add references to equations and parts of paper 
 include("model.jl") 
 include("EDMD.jl")  
 include("controller.jl")       

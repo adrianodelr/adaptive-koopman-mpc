@@ -8,6 +8,7 @@ and is used for the by the data driven model for training purposes.
 - `length_buffer::Int`: Buffer size or memory of the system
 - `n_joints::Int`: Number of joint positions/angles/actuated joint
 """
+# TODO : update documentation
 mutable struct Databuffer
     θ::Vector{CircularBuffer{Float64}}
     v::Vector{CircularBuffer{Float64}}
@@ -24,6 +25,7 @@ mutable struct Databuffer
     end 
 end 
 
+# TODO : write documentation
 function update_buffer!(x::AbstractArray, u::AbstractArray, t::Union{AbstractArray, Float64}, buffer::Databuffer)
     Nx = size(x,2)
     Nu = size(u,2)
@@ -47,15 +49,7 @@ function update_buffer!(x::AbstractArray, u::AbstractArray, t::Union{AbstractArr
 end 
 
 
-"""
-    Dictionary(Ψ::Vector{Function})
-    
-
-# Arguments
-- `parent::Union{DoublePendulum, SinglePendulum}`: the system which is beeing for datasampling.
-- `length_buffer::Int`: bufferlength which determined how many sampling points in the past the 'memory' includes.
-"""
-# TODO : Write documentation 
+# TODO : write documentation
 mutable struct Dictionary
     Ψ::Vector{Function}
     p::Int 
@@ -64,6 +58,7 @@ mutable struct Dictionary
     end 
 end  
 
+# TODO : write documentation
 function lifting(x::Vector, dict::Dictionary)
     Ψ = dict.Ψ
     z = vec([Ψ[k](x) for k in eachindex(Ψ)])
@@ -111,12 +106,7 @@ function get_buffer_data(buffer::Databuffer)
     return X,X⁺,U
 end 
 
-"""
-    regression!(X̃lift, Ỹlift, model::DDMLinearModel)
-
-Perform a regression on the lifted snapshot matrices 'X̃lift' and 'Ỹlift' to obtain the best fit linear operators 
-A,B relating both matrices in the controlled setting
-"""
+# TODO : write documentation
 function EDMD(param::EDMDParameters)
     p = param.dict.p
     m = param.buffer.m

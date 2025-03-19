@@ -1,16 +1,4 @@
-"""
-    DoublePendulum(m1,m2,l1,l2,lcom1,lcom2,I1,I2)
-
-Constructs a double pendulum from the specified properties. Assumption: Links are symmetric along the 'link' axis,
-pointing from link beginning to link end, thus COM located along the link axis.
-
-# Arguments
-- `m::Vector`: Link mass.
-- `l::Vector`: Link length.
-- `lcom::Vector`: Distance from joint of antecedant body to COM
-- `I::Vector`: Link inertia.
-- `n::Int`  : Number of joints 
-"""
+# TODO : write documentation
 mutable struct nPendulum
     const m::Vector
     const l::Vector
@@ -26,6 +14,7 @@ mutable struct nPendulum
     end 
 end 
 
+# TODO : write documentation
 function forward_dynamics_single_pendulum(x::Vector, u::Vector, model::nPendulum; g::Float64=9.81)
     lcom1,m1,I1=model.lcom[1],model.m[1],model.I[1]
     θ1d = x[2]
@@ -33,6 +22,7 @@ function forward_dynamics_single_pendulum(x::Vector, u::Vector, model::nPendulum
     return [θ1d;ω1d]    
 end 
 
+# TODO : write documentation
 function forward_dynamics_double_pendulum(x::Vector, u::Vector, model::nPendulum; g::Float64=9.81)
     l1,lcom1,m1,I1=model.l[1],model.lcom[1],model.m[1],model.I[1]
     l2,lcom2,m2,I2=model.l[2],model.lcom[2],model.m[2],model.I[2]
@@ -58,7 +48,7 @@ end
 """ 
     rk4(x, u, h, dynamics::Function)
 
-Runge Kutta 4 discretization of the forward dynamic model of a dynamic 'system', given current state 'x', controls 'u', and discretization step 'h',
+Runge Kutta 4 discretization of the forward dynamic model of a dynamic system, given current state 'x', controls 'u', and discretization step 'h',
 assuming a ZOH on controls. 
 """
 function rk4(x, u, h, dynamics::Function)
@@ -69,6 +59,7 @@ function rk4(x, u, h, dynamics::Function)
     return x + h/6*(k1 + 2k2 + 2k3 + k4)
 end  
 
+# TODO : write documentation
 function simulate(x::Vector, u::Vector, h::Float64, model::nPendulum)
     if model.n==2
         return rk4(x, u, h, (x,u) -> forward_dynamics_single_pendulum(x, u, model))
@@ -77,6 +68,7 @@ function simulate(x::Vector, u::Vector, h::Float64, model::nPendulum)
     end 
 end 
 
+# TODO : write documentation
 function linearize_discretize_dynamics(x::Vector,u::Vector, h, model::nPendulum)
     A = ForwardDiff.jacobian(x_-> simulate(x_, u, h, model),x)
     B = ForwardDiff.jacobian(u_-> simulate(x, u_, h, model),u)    
