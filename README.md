@@ -43,6 +43,7 @@ The buffer size relates to the number of data points stored within the circular 
 
 ### Simulation code 
 In the paper, experimental comparison between adaptive KMPC, linearization MPC and a further Koopman based controller, denoted static KMPC, is done. This repository contains code implementations of adaptive KMPC and comparative controllers, which allows to simulate tracking control and mimic the hardware experiments under simplified conditions. Variable names in the source files are consistent with the notation used in the paper, such that equations can be easily identified. 
+
 Exemplary usage is shown in two Jupyter notebooks, which simulate reference tracking control of [1R system](src/reference_tracking_single_pendulum.ipynb) and [2R system](src/reference_tracking_double_pendulum.ipynb), along with a comparison of the controllers.   
 
 
