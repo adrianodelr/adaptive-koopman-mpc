@@ -147,11 +147,7 @@ function get_control(x0::Vector, k::Int, ctrl::AdaptiveKMPC)
     return uk 
 end   
 
-
-
 ## Code for linearization MPC
-# TODO: add source to see how linearization controller is formulated  
-
 # TODO : write documentation  
 function build_predmat_linearized(Â::AbstractArray, B̂::AbstractArray, H::Int)
     n = size(Â,1)
@@ -196,10 +192,6 @@ function build_qp(A::AbstractArray, B::AbstractArray, K::AbstractArray, r::Abstr
     return P, q
 end  
 
-# TODO : write documentation
-function get_dims(param::EDMDParameters)
-    return param.dict.p, param.buffer.m 
-end  
 
 # TODO : write documentation
 function augment_model(A::AbstractArray, B::AbstractArray, K::AbstractArray)

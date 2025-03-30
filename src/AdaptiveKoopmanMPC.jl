@@ -1,3 +1,7 @@
+module AdaptiveKoopmanMPC
+
+greet() = print("Have fun experimenting with adaptive Koopman MPC!")
+
 # dependencies 
 using LinearAlgebra
 using OSQP 
@@ -7,16 +11,21 @@ using PCHIPInterpolation
 using JLD2 
 using LaTeXStrings  
 using ForwardDiff 
-
 using CairoMakie
-import GLMakie as GL 
 
 # Ensure standard backend Cairo is activated  
 CairoMakie.activate!()  
 
-# TODO: add references to equations and parts of paper 
 include("model.jl") 
-include("EDMD.jl")  
-include("controller.jl")       
-include("plotting.jl")       
+export nPendulum, simulate
 
+include("EDMD.jl")  
+export update_buffer!, Dictionary, EDMDParameters 
+
+include("controller.jl")       
+export Constraints, AdaptiveKMPC, get_control, linearizationMPC 
+
+include("plotting.jl")       
+export plot_tracking_results, plot_performance_metrics
+
+end # module AdaptiveKoopmanMPC

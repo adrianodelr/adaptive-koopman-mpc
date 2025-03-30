@@ -1,0 +1,28 @@
+name = "AdaptiveKoopmanMPC"
+uuid = "a3511198-3bd3-44f4-8f84-d7bf4ff4fd7b"
+authors = ["adriano del rio <adriano.del_rio_fernandez@dfki.de>"]
+version = "0.1.0"
+
+[deps]
+BlockArrays = "8e7c35d0-a365-5155-bbbb-fb81a777f24e"
+CairoMakie = "13f3f980-e62b-5c42-98c6-ff1f3baf88f0"
+DataStructures = "864edb3b-99cc-5e75-8d2d-829cb0a9cfe8"
+ForwardDiff = "f6369f11-7733-5829-9624-2563aa707210"
+JLD2 = "033835bb-8acc-5ee8-8aae-3f567f8a3819"
+LaTeXStrings = "b964fa9f-0449-5b57-a5c2-d3ea65f4040f"
+LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
+OSQP = "ab2f91bb-94b4-55e3-9ba0-7f65df51de79"
+PCHIPInterpolation = "afe20452-48d1-4729-9a8b-50fb251f06cd"
+SparseArrays = "2f01184e-e22b-5df5-ae63-d93ebab69eaf"
+
+[compat]
+BlockArrays = "1.5.0"
+CairoMakie = "0.13.2"
+DataStructures = "0.18.22"
+ForwardDiff = "0.10.38"
+JLD2 = "0.5.12"
+LaTeXStrings = "1.4.0"
+LinearAlgebra = "1.11.0"
+OSQP = "0.8.1"
+PCHIPInterpolation = "0.2.1"
+SparseArrays = "1.11.0"

@@ -32,10 +32,10 @@ function forward_dynamics_double_pendulum(x::Vector, u::Vector, model::nPendulum
     m22 = I2 
     m12 = I2 + l1*lcom2*m2*cos(q[2])
     m21 = I2 + l1*lcom2*m2*cos(q[2])     
-    M = [m11 m12; m21 m22]      # intertia matrix 
+    M = [m11 m12; m21 m22]      # inertia matrix 
     c1 = -2*l1*lcom2*m2*sin(q[2])*v[1]*v[2] - l1*lcom2*m2*sin(q[2])*v[2]^2
     c2 = l1*lcom2*m2*sin(q[2])*v[1]^2
-    C = [c1; c2]                # coriolis matrix + centrigual forces 
+    C = [c1; c2]                # coriolis + centrigual forces 
     g1 = g*lcom1*m1*sin(q[1]) + g*m2*(l1*sin(q[1]) + lcom2*sin(sum(q)))    
     g2 = g*m2*lcom2*sin(sum(q))
     G = [g1;g2]                 # gravity vector 
