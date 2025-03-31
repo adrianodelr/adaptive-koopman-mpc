@@ -1,19 +1,42 @@
 ## Code for adaptive and static KMPC 
-# TODO : write documentation
+"""
+    Weights(Q::Vector, Qf::Vector, R::Vector, H::Int)
+
+Holds MPC weight matrices. 
+
+# Arguments
+- `Q::Vector`: Main diagonal of tracking error-weight matrix, see eq. (6a)  
+- `Qf::Vector`: Main diagonal of tracking error-weight matrix for the final state 
+- `R::Vector`: Main diagonal of control effort weight matrix, see eq. (6a)
+- `H::Int`: Prediction horizon 
+"""
 struct Weights
     Q::AbstractArray
     R::AbstractArray
     function Weights(Q::Vector, Qf::Vector, R::Vector, H::Int)
         Qf = diagm(Qf)
         n = length(Q)
-        Q = diagm(repeat(Q, inner=[1,1], outer=[1,H]) |> vec)
-        R = diagm(repeat(R, inner=[1,1], outer=[1,H]) |> vec)
+        Q = diagm(repeat(Q, inner=[1,1], outer=[1,H]) |> vec)   # equivaltent to  kron(I_H, diagm(Q))
+        R = diagm(repeat(R, inner=[1,1], outer=[1,H]) |> vec)   # equivaltent to  kron(I_H, diagm(R))
         Q[end-n+1:end,end-n+1:end] .= Qf    
         return new(Q,R)
     end 
 end 
 
-# TODO : write documentation
+"""
+    build_predmat(Â::AbstractArray, B̂::AbstractArray, H::Int)
+
+Builds prediction matrices, see eq.(8). 
+
+# Arguments
+- `Â::AbstractArray`: Augmented state transition matrix, see eq. (7)  
+- `B̂::AbstractArray`: Augmented control matrix, see eq. (7) 
+- `H::Int`: Prediction horizon 
+
+# Returns 
+- `A_bold::AbstractArray`: state transition matrix, see eq. (8)   
+- `B_bold::AbstractArray`: control matrix, see eq. (8)
+"""
 function build_predmat(Â::AbstractArray, B̂::AbstractArray, H::Int)
     n = size(Â,1)
     m = size(B̂,2)        
@@ -30,7 +53,16 @@ function build_predmat(Â::AbstractArray, B̂::AbstractArray, H::Int)
     return A_bold,B_bold
 end 
 
-# TODO : write documentation
+"""
+    Constraints(ul::AbstractArray,uu::AbstractArray,H::Int)
+
+Builds the constant part of the input constraints, shown at the end of section II b).
+
+# Arguments
+- `ul::AbstractArray`: lower limit on controls, see eq. (6a)  
+- `uu::AbstractArray`: upper limit on controls, see eq. (6a) 
+- `H::Int`: Prediction horizon 
+"""
 struct Constraints 
     ul_bold_const::AbstractArray
     uu_bold_const::AbstractArray
@@ -44,8 +76,25 @@ struct Constraints
     end 
 end
 
-# TODO : write documentation
-function build_qp(A::AbstractArray, B::AbstractArray, Ψ_r::AbstractArray, weights::Weights, H::Int,z0::Vector, uₖ₋₁::Vector)
+"""
+    build_cost_function(A::AbstractArray, B::AbstractArray, Ψ_r::AbstractArray, weights::Weights, H::Int,z0::Vector, uₖ₋₁::Vector)
+
+Builds the cost function, see eq (9) .
+
+# Arguments
+- `A::AbstractArray`: state transition matrix, see eq. (5)  
+- `B::AbstractArray`: control matrix, see eq. (5)  
+- `Ψ_r::AbstractArray`: lifted reference over next H steps, appears in the error term in eq. (6a)  
+- `weights::Weights`: struct with weight matrices   
+- `H::Int`: Prediction horizon 
+- `z0::Vector`: lifted state at current operating point, see eq. (8)
+- `uₖ₋₁::Vector`: control vector applied at previous time step 
+
+# Returns 
+- `P::AbstractArray`: term with quadratic dependence on δu  
+- `q::AbstractArray`: term with linear dependence on δu  
+"""
+function build_cost_function(A::AbstractArray, B::AbstractArray, Ψ_r::AbstractArray, weights::Weights, H::Int, z0::Vector, uₖ₋₁::Vector)
 
     p,m = length(z0), length(uₖ₋₁)
 
@@ -67,12 +116,28 @@ function build_qp(A::AbstractArray, B::AbstractArray, Ψ_r::AbstractArray, weigh
     return P, q
 end  
 
-# TODO : write documentation
+"""
+    get_dims(param::EDMDParameters)
+
+get the state dimension of the lifted state space model (p -> size of state vector, m -> size of control vector).
+"""
 function get_dims(param::EDMDParameters)
     return param.dict.p, param.buffer.m 
 end  
 
-# TODO : write documentation
+"""
+    augment_model(A::AbstractArray, B::AbstractArray)
+
+Augments the Koopman state space model, see eq. (7)
+
+# Arguments
+- `A::AbstractArray`: state transition matrix, see eq. (5)  
+- `B::AbstractArray`: control matrix, see eq. (5)  
+
+# Returns 
+- `Â::AbstractArray`: augmented state transition matrix  
+- `B̂::AbstractArray`: augmented control matrix  
+"""
 function augment_model(A::AbstractArray, B::AbstractArray)
     p,m = size(B) 
     Â = [A B; zeros(m,p) I(m)]
@@ -80,7 +145,30 @@ function augment_model(A::AbstractArray, B::AbstractArray)
     return Â,B̂
 end  
 
-# TODO : write documentation
+"""
+    AdaptiveKMPC(edmd_params::EDMDParameters,Q::Vector,Qf::Vector,R::Vector,r::AbstractArray,H::Int,constr::Constraints)
+
+Constructor for Adaptive KMPC struct, which holds parameters for building and solving the MPC problem. 
+
+# Arguments
+- `edmd_params::EDMDParameters`: struct holding parameters needed for EDMD (dictionary..)  
+- `Q::Vector`: Main diagonal of tracking error-weight matrix, see eq. (6a)  
+- `Qf::Vector`: Main diagonal of tracking error-weight matrix for the final state 
+- `R::Vector`: Main diagonal of control effort weight matrix, see eq. (6a)
+- `r::AbstractArray`: reference trajectory 
+- `H::Int`: Prediction horizon 
+- `constr::Constraints`: struct holding constraint matrices  
+
+# Fields: 
+- `edmd_params::EDMDParameters`: struct holding parameters needed for EDMD (dictionary..)  
+- `weights::Weights`: struct holding weight matrices  
+- `Ψ_r::AbstractArray`: lifted reference, appears in the error term in eq. (6a)  
+- `H::Int`: Prediction horizon
+- `constr::Constraints`: struct holding constraint matrices
+- `uₖ₋₁::Vector`: control vector applied at previous time step   
+- `solver`: OSQP solver object 
+
+"""
 mutable struct AdaptiveKMPC
     edmd_params::EDMDParameters                    
     weights::Weights                  
@@ -101,7 +189,7 @@ mutable struct AdaptiveKMPC
         end
         A = ones(p,p)
         B = ones(p,m)
-        P,q = build_qp(A, B, Ψ_r, weights, H, ones(p), ones(m))
+        P,q = build_cost_function(A, B, Ψ_r, weights, H, ones(p), ones(m))
         ul_bold, uu_bold, CΔ = constr.ul_bold_const, constr.uu_bold_const, constr.CΔ
 
         solver = OSQP.Model()
@@ -111,12 +199,34 @@ mutable struct AdaptiveKMPC
     end 
 end
 
-# TODO : write documentation
+"""
+    update_buffer!(x::AbstractArray,u::AbstractArray,t::Union{AbstractArray, Float64},ctrl::AdaptiveKMPC)
+
+Updates the circular buffer with new data.  
+
+# Arguments
+- `x::AbstractArray`: state vector   
+- `u::AbstractArray`: control vector   
+- `t::Union{AbstractArray, Float64}`: time 
+- `ctrl::AdaptiveKMPC`: Adaptive KMPC struct  
+"""
 function update_buffer!(x::AbstractArray,u::AbstractArray,t::Union{AbstractArray, Float64},ctrl::AdaptiveKMPC)
     update_buffer!(x,u,t,ctrl.edmd_params.buffer)
 end 
 
-# TODO : write documentation
+"""
+    get_control(x0::Vector, k::Int, ctrl::AdaptiveKMPC)
+
+Computes next control action.  
+
+# Arguments
+- `x0::Vector`: current state   
+- `k::Int`: index in reference trajectors, corresponding to current time  
+- `ctrl::AdaptiveKMPC`: Adaptive KMPC struct   
+
+# Returns 
+- `uk::Vector`: next control action 
+"""
 function get_control(x0::Vector, k::Int, ctrl::AdaptiveKMPC)
     
     # get internal model 
@@ -135,7 +245,7 @@ function get_control(x0::Vector, k::Int, ctrl::AdaptiveKMPC)
             Ψ_r[:,i-k+1] = ctrl.Ψ_r[:,end]
         end 
     end
-    P, q = build_qp(A, B, Ψ_r, ctrl.weights, H, z0, ctrl.uₖ₋₁)
+    P, q = build_cost_function(A, B, Ψ_r, ctrl.weights, H, z0, ctrl.uₖ₋₁)
     CΔ, ul_bold, uu_bold = build_constraints(ctrl)
     OSQP.update!(ctrl.solver, Px=triu(sparse(P)).nzval, q=vec(q), l=ul_bold, u=uu_bold, Ax=sparse(CΔ).nzval)
     
@@ -148,7 +258,22 @@ function get_control(x0::Vector, k::Int, ctrl::AdaptiveKMPC)
 end   
 
 ## Code for linearization MPC
-# TODO : write documentation  
+"""
+    build_predmat(Â::AbstractArray, B̂::AbstractArray, H::Int)
+
+Builds prediction matrices, for linearization MPC, equivalent to eq.(8), but with a matrix which will be multiplied with a constant offset term which comes into play due to linearization,
+see for example https://www.researchgate.net/publication/319122854_Successive_Linearization_Based_Model_Predictive_Control_of_Variable_Stiffness_Actuated_Robots .
+
+# Arguments
+- `Â::AbstractArray`: Augmented state transition matrix, equivalent to eq. (7)  
+- `B̂::AbstractArray`: Augmented control matrix, equivalent to eq. (7)  
+- `H::Int`: Prediction horizon 
+
+# Returns 
+- `A_bold::AbstractArray`: state transition matrix, equivalent to eq. (8)   
+- `B_bold::AbstractArray`: control matrix, equivalent to eq. (8)
+- `E_bold::AbstractArray`: matrix which will be multiplied with constant offset vector 
+"""
 function build_predmat_linearized(Â::AbstractArray, B̂::AbstractArray, H::Int)
     n = size(Â,1)
     m = size(B̂,2)        
@@ -167,10 +292,28 @@ function build_predmat_linearized(Â::AbstractArray, B̂::AbstractArray, H::Int
         end
     end
     return A_bold,B_bold,E_bold
-end  
+end
 
-# TODO : write documentation
-function build_qp(A::AbstractArray, B::AbstractArray, K::AbstractArray, r::AbstractArray, weights::Weights, H::Int, x0::Vector, uₖ₋₁::Vector)
+"""
+    build_cost_function(A::AbstractArray, B::AbstractArray, K::AbstractArray, Ψ_r::AbstractArray, weights::Weights, H::Int,z0::Vector, uₖ₋₁::Vector)
+
+Builds the cost function, equivalent to eq (9), but for linearized dynamics.  
+
+# Arguments
+- `A::AbstractArray`: state transition matrix  
+- `B::AbstractArray`: control matrix  
+- `K::AbstractArray`: constant offset vector   
+- `r::AbstractArray`: reference over next H steps
+- `weights::Weights`: struct with weight matrices   
+- `H::Int`: Prediction horizon 
+- `x0::Vector`: state at current operating point, see eq. (8)
+- `uₖ₋₁::Vector`: control vector applied at previous time step 
+
+# Returns 
+- `P::AbstractArray`: term with quadratic dependence on δu  
+- `q::AbstractArray`: term with linear dependence on δu  
+"""
+function build_cost_function(A::AbstractArray, B::AbstractArray, K::AbstractArray, r::AbstractArray, weights::Weights, H::Int, x0::Vector, uₖ₋₁::Vector)
 
     n,m = length(x0), length(uₖ₋₁)
     
@@ -193,7 +336,21 @@ function build_qp(A::AbstractArray, B::AbstractArray, K::AbstractArray, r::Abstr
 end  
 
 
-# TODO : write documentation
+"""
+    augment_model(A::AbstractArray, B::AbstractArray)
+
+Augments the state space model of linearized dynamics, equivalent to eq. (7).
+
+# Arguments
+- `A::AbstractArray`: state transition matrix  
+- `B::AbstractArray`: control matrix  
+- `K::AbstractArray`: constant offset vector   
+
+# Returns 
+- `Â::AbstractArray`: augmented state transition matrix  
+- `B̂::AbstractArray`: augmented control matrix
+- `K̂::AbstractArray`: augmented version of the offset vector 
+"""
 function augment_model(A::AbstractArray, B::AbstractArray, K::AbstractArray)
     n,m = size(B) 
     Â = [A B; zeros(m,n) I(m)]
@@ -202,7 +359,33 @@ function augment_model(A::AbstractArray, B::AbstractArray, K::AbstractArray)
     return Â,B̂,K̂ 
 end  
 
-# TODO : write documentation
+
+"""
+    linearizationMPC(model::nPendulum,Q::Vector,Qf::Vector,R::Vector,r::AbstractArray,H::Int,constr::Constraints,h::Float64)
+
+Constructor for linearization MPC, with parameters for building and solving the MPC problem. 
+
+# Arguments
+- `model::nPendulum`: holds parameters for nonlinear pendulum model   
+- `Q::Vector`: Main diagonal of tracking error-weight matrix, equivalent to eq. (6a)  
+- `Qf::Vector`: Main diagonal of tracking error-weight matrix for the final state 
+- `R::Vector`: Main diagonal of control effort weight matrix, equivalent to eq. (6a)
+- `r::AbstractArray`: reference trajectory 
+- `H::Int`: Prediction horizon 
+- `constr::Constraints`: struct holding constraint matrices  
+- `h::Float64`: discretization step size    
+
+# Fields: 
+- `model::nPendulum`: holds parameters for nonlinear pendulum model   
+- `weights::Weights`: holds weight matrices  
+- `r::AbstractArray`: reference trajectory  
+- `H::Int`: Prediction horizon
+- `constr::Constraints`: struct holding constraint matrices
+- `uₖ₋₁::Vector`: control vector applied at previous time step  
+- `h::Float64`: discretization step size  
+- `solver`: OSQP solver object 
+
+"""
 mutable struct linearizationMPC
     model::nPendulum                    
     weights::Weights                  
@@ -220,7 +403,7 @@ mutable struct linearizationMPC
         weights = Weights([Q;zeros(m)], [Qf;zeros(m)], R, H)
         A = ones(n,n)
         B = ones(n,m)
-        P,q = build_qp(A, B, ones(n), r, weights, H, ones(n), ones(m))
+        P,q = build_cost_function(A, B, ones(n), r, weights, H, ones(n), ones(m))
         ul_bold, uu_bold, CΔ = constr.ul_bold_const, constr.uu_bold_const, constr.CΔ
 
         solver = OSQP.Model()
@@ -230,7 +413,19 @@ mutable struct linearizationMPC
     end 
 end
 
-# TODO : write documentation
+"""
+    get_control(x0::Vector, k::Int, ctrl::linearizationMPC)
+
+Computes next control action. 
+
+# Arguments
+- `x0::Vector`: current state   
+- `k::Int`: index in reference trajectors, corresponding to current time  
+- `ctrl::linearizationMPC`: linearization MPC parameters    
+
+# Returns 
+- `uk::Vector`: next control action 
+"""
 function get_control(x0::Vector, k::Int, ctrl::linearizationMPC)
     
     # obtain A and B matrix by linearization + constant offset term from linearization 
@@ -248,7 +443,7 @@ function get_control(x0::Vector, k::Int, ctrl::linearizationMPC)
             r[:,i-k+1] = ctrl.r[:,end]
         end 
     end
-    P, q = build_qp(A, B, K, r, ctrl.weights, H, x0, ctrl.uₖ₋₁)
+    P, q = build_cost_function(A, B, K, r, ctrl.weights, H, x0, ctrl.uₖ₋₁)
     CΔ, ul_bold, uu_bold = build_constraints(ctrl)
     OSQP.update!(ctrl.solver, Px=triu(sparse(P)).nzval, q=vec(q), l=ul_bold, u=uu_bold, Ax=sparse(CΔ).nzval)
     
@@ -260,8 +455,19 @@ function get_control(x0::Vector, k::Int, ctrl::linearizationMPC)
     return uk 
 end   
 
+"""
+    build_constraints(ctrl::Union{AdaptiveKMPC,linearizationMPC})
 
-# TODO : write documentation
+Builds the input constraints, shown at the end of section II b). 
+
+# Arguments
+- `ctrl::Union{AdaptiveKMPC,linearizationMPC}`: Adaptive KMPC or linearization MPC  
+
+# Returns 
+- `CΔ::AbstractArray`: inequality constraint matrix for input constraints   
+- `ul_bold::Vector`: lower limits on controls 
+- `uu_bold::Vector`: upper limits on controls 
+"""
 function build_constraints(ctrl::Union{AdaptiveKMPC,linearizationMPC})
     ul_bold = ctrl.constr.ul_bold_const - repeat(ctrl.uₖ₋₁, ctrl.H)  
     uu_bold = ctrl.constr.uu_bold_const - repeat(ctrl.uₖ₋₁, ctrl.H)      

@@ -1,14 +1,21 @@
 """
-    Databuffer(length_buffer, n_joints)
+    Databuffer(N,m)
 
-Temporal (fixed size) data container that holds last last recorded joint positions, velocities and controls ('θ','v','u')
-and is used for the by the data driven model for training purposes.   
+Fixed size data buffer that holds joint positions, velocities and controls ('θ','v','u').
 
 # Arguments
-- `length_buffer::Int`: Buffer size or memory of the system
-- `n_joints::Int`: Number of joint positions/angles/actuated joint
+- `N::Int`: Buffer size or memory of the system
+- `m::Int`: DOF
+
+# Field 
+- `θ::Vector{CircularBuffer{Float64}}`: Holds angular positions
+- `v::Vector{CircularBuffer{Float64}}`: Holds angular velocities
+- `u::Vector{CircularBuffer{Float64}}`: Holds controls 
+- `t::CircularBuffer{Float64}`: Holds time stamps 
+- `t::CircularBuffer{Float64}`: Holds time stamps 
+- `N::Int`: Buffer size or memory of the system
+- `m::Int`: DOF
 """
-# TODO : update documentation
 mutable struct Databuffer
     θ::Vector{CircularBuffer{Float64}}
     v::Vector{CircularBuffer{Float64}}
@@ -25,7 +32,17 @@ mutable struct Databuffer
     end 
 end 
 
-# TODO : write documentation
+"""
+    update_buffer!(x::AbstractArray, u::AbstractArray, t::Union{AbstractArray, Float64}, buffer::Databuffer)
+
+Updates the circular buffer with a time series of new data 
+
+# Arguments
+- `x::AbstractArray`: state trajectory matrix with dimensions n x N (N = length of the trajectory)  
+- `u::AbstractArray`: control trajectory matrix with dimensions m x N-1  
+- `t::Union{AbstractArray, Float64}`: time 
+- `buffer::Databuffer` : buffer to update 
+"""
 function update_buffer!(x::AbstractArray, u::AbstractArray, t::Union{AbstractArray, Float64}, buffer::Databuffer)
     Nx = size(x,2)
     Nu = size(u,2)
@@ -49,7 +66,18 @@ function update_buffer!(x::AbstractArray, u::AbstractArray, t::Union{AbstractArr
 end 
 
 
-# TODO : write documentation
+"""
+    Dictionary(Ψ::Vector{Function})
+
+Dictionary which holds lifting functions  
+
+# Arguments
+- `Ψ::Vector{Function}`: Vector of lifting functions   
+
+# Field 
+- `Ψ::Vector{Function}`: Vector of lifting functions
+- `p::Int`: dimension of the lifted state  
+"""
 mutable struct Dictionary
     Ψ::Vector{Function}
     p::Int 
@@ -58,7 +86,11 @@ mutable struct Dictionary
     end 
 end  
 
-# TODO : write documentation
+"""
+    lifting(x::Vector, dict::Dictionary)
+
+Applies lifting dictionary to state vector x.
+"""
 function lifting(x::Vector, dict::Dictionary)
     Ψ = dict.Ψ
     z = vec([Ψ[k](x) for k in eachindex(Ψ)])
@@ -67,18 +99,19 @@ end
 
 
 """
-    EDMDModel(parent,bsize,p,h)
+    EDMDParameters(m,N,dict)
 
-Construct a Data Driven Linear Model, inheriting properties from 'parent' which can be 
-of type 'DoublePendulum' or 'SinglePendulum'.
+Holds parameters for performing extended dynamic mode decomposition, see section II a).
 
 # Arguments
-- `parent::Union{DoublePendulum, SinglePendulum}`: the system which is beeing for datasampling.
-- `length_buffer::Int`: bufferlength which determined how many sampling points in the past the 'memory' includes.
-- `p::Int`: Lifting dimension depends on the dictionary being used for the EDMD.
-- `h::Float64`: The sampling intervall length a.k.a discretization time.
+- `N::Int`: Buffer size or memory of the system
+- `m::Int`: DOF
+- `dict::Dictionary`: bufferlength which determined how many sampling points in the past the 'memory' includes.
+
+# Fields 
+- `buffer::Databuffer`: the system which is beeing for datasampling.
+- `dict::Dictionary`: bufferlength which determined how many sampling points in the past the 'memory' includes.
 """
-# TODO : update documentation
 mutable struct EDMDParameters
     buffer::Databuffer
     dict::Dictionary
@@ -89,6 +122,13 @@ mutable struct EDMDParameters
     end 
 end  
 
+
+"""
+    get_buffer_data(buffer::Databuffer)
+
+Constructs snapshot matrices X, X⁺,U, see section II a), from the data buffer. 
+
+"""
 function get_buffer_data(buffer::Databuffer)
     X,X⁺ = zeros(2buffer.m, buffer.N-1),zeros(2buffer.m, buffer.N-1)
     U = zeros(buffer.m, buffer.N-1)
@@ -106,8 +146,18 @@ function get_buffer_data(buffer::Databuffer)
     return X,X⁺,U
 end 
 
-# TODO : write documentation
-function EDMD(param::EDMDParameters)
+"""
+    EDMD(param::EDMDParameters)
+
+Performs extended dynamic mode decomposition and returns a lifted state space model, see eq. (5).
+
+# Arguments
+- `param::EDMDParameters`: holds parameters for EDMD, including data. 
+
+# Returns 
+- `A::AbstractArray`: state transition matrix  
+- `B::AbstractArray`: control matrix  
+"""function EDMD(param::EDMDParameters)
     p = param.dict.p
     m = param.buffer.m
     N = param.buffer.N

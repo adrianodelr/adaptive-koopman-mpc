@@ -1,4 +1,21 @@
-# TODO : write documentation
+"""
+    nPendulum(m,l,lcom,I)
+
+`Holds parameters for nonlinear pendulum model. 
+
+# Arguments
+- `m::Vector`: link masses 
+- `l::Vector`: link lengths
+- `lcom::Vector`: distance of rotational axis to center of mass (COM)
+- `I::Vector`: Moments of inertia of links expressed in COM frame
+
+# Fields: 
+- `m::Vector`: link masses 
+- `l::Vector`: link lengths
+- `lcom::Vector`: distance of rotational axis to center of mass (COM)
+- `I::Vector`: Moments of inertia of links expressed in COM frame
+- `n::Int`: DOF 
+"""
 mutable struct nPendulum
     const m::Vector
     const l::Vector
@@ -14,7 +31,20 @@ mutable struct nPendulum
     end 
 end 
 
-# TODO : write documentation
+"""
+    forward_dynamics_single_pendulum(x::Vector, u::Vector, model::nPendulum; g::Float64=9.81)
+
+Continuous time forward dynamics of the single pendulum in 'first order form'.
+
+# Arguments: 
+- `x::Vector`: state vector 
+- `u::Vector`: control vector 
+- `model::nPendulum`: pendulum parameters 
+- `g::Float64`: grav. acceleration
+
+# Returns 
+- `xdot::Vector`: time derivative of state vector  
+"""
 function forward_dynamics_single_pendulum(x::Vector, u::Vector, model::nPendulum; g::Float64=9.81)
     lcom1,m1,I1=model.lcom[1],model.m[1],model.I[1]
     θ1d = x[2]
@@ -22,7 +52,20 @@ function forward_dynamics_single_pendulum(x::Vector, u::Vector, model::nPendulum
     return [θ1d;ω1d]    
 end 
 
-# TODO : write documentation
+"""
+    forward_dynamics_double_pendulum(x::Vector, u::Vector, model::nPendulum; g::Float64=9.81)
+
+Continuous time forward dynamics of the double pendulum in 'first order form'.
+
+# Arguments: 
+- `x::Vector`: state vector 
+- `u::Vector`: control vector 
+- `model::nPendulum`: pendulum parameters 
+- `g::Float64`: grav. acceleration
+
+# Returns 
+- `xdot::Vector`: time derivative of state vector  
+"""
 function forward_dynamics_double_pendulum(x::Vector, u::Vector, model::nPendulum; g::Float64=9.81)
     l1,lcom1,m1,I1=model.l[1],model.lcom[1],model.m[1],model.I[1]
     l2,lcom2,m2,I2=model.l[2],model.lcom[2],model.m[2],model.I[2]
@@ -59,7 +102,11 @@ function rk4(x, u, h, dynamics::Function)
     return x + h/6*(k1 + 2k2 + 2k3 + k4)
 end  
 
-# TODO : write documentation
+""" 
+    simulate(x::Vector, u::Vector, h::Float64, model::nPendulum)
+
+Simulates the nonlinear pendulum model forward in time by a step h, using RK4 scheme. 
+"""
 function simulate(x::Vector, u::Vector, h::Float64, model::nPendulum)
     if model.n==2
         return rk4(x, u, h, (x,u) -> forward_dynamics_single_pendulum(x, u, model))
@@ -68,7 +115,11 @@ function simulate(x::Vector, u::Vector, h::Float64, model::nPendulum)
     end 
 end 
 
-# TODO : write documentation
+""" 
+    linearize_discretize_dynamics(x::Vector,u::Vector, h, model::nPendulum)
+
+Linearizes and discretizes the nonlinear pendulum dynamics. 
+"""
 function linearize_discretize_dynamics(x::Vector,u::Vector, h, model::nPendulum)
     A = ForwardDiff.jacobian(x_-> simulate(x_, u, h, model),x)
     B = ForwardDiff.jacobian(u_-> simulate(x, u_, h, model),u)    
