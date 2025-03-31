@@ -85,7 +85,7 @@ Builds the cost function, see eq (9) .
 - `A::AbstractArray`: state transition matrix, see eq. (5)  
 - `B::AbstractArray`: control matrix, see eq. (5)  
 - `Ψ_r::AbstractArray`: lifted reference over next H steps, appears in the error term in eq. (6a)  
-- `weights::Weights`: struct with weight matrices   
+- `weights::Weights`: weight matrices   
 - `H::Int`: Prediction horizon 
 - `z0::Vector`: lifted state at current operating point, see eq. (8)
 - `uₖ₋₁::Vector`: control vector applied at previous time step 
@@ -148,23 +148,23 @@ end
 """
     AdaptiveKMPC(edmd_params::EDMDParameters,Q::Vector,Qf::Vector,R::Vector,r::AbstractArray,H::Int,constr::Constraints)
 
-Constructor for Adaptive KMPC struct, which holds parameters for building and solving the MPC problem. 
+Holds adaptive KMPC parameters for building and solving the MPC problem. 
 
 # Arguments
-- `edmd_params::EDMDParameters`: struct holding parameters needed for EDMD (dictionary..)  
+- `edmd_params::EDMDParameters`: holds parameters needed for EDMD (dictionary..)  
 - `Q::Vector`: Main diagonal of tracking error-weight matrix, see eq. (6a)  
 - `Qf::Vector`: Main diagonal of tracking error-weight matrix for the final state 
 - `R::Vector`: Main diagonal of control effort weight matrix, see eq. (6a)
 - `r::AbstractArray`: reference trajectory 
 - `H::Int`: Prediction horizon 
-- `constr::Constraints`: struct holding constraint matrices  
+- `constr::Constraints`: Holds constraint matrices  
 
 # Fields: 
-- `edmd_params::EDMDParameters`: struct holding parameters needed for EDMD (dictionary..)  
-- `weights::Weights`: struct holding weight matrices  
+- `edmd_params::EDMDParameters`: Holds parameters needed for EDMD (dictionary..)  
+- `weights::Weights`: Holds weight matrices  
 - `Ψ_r::AbstractArray`: lifted reference, appears in the error term in eq. (6a)  
 - `H::Int`: Prediction horizon
-- `constr::Constraints`: struct holding constraint matrices
+- `constr::Constraints`: Holds constraint matrices
 - `uₖ₋₁::Vector`: control vector applied at previous time step   
 - `solver`: OSQP solver object 
 
@@ -208,7 +208,7 @@ Updates the circular buffer with new data.
 - `x::AbstractArray`: state vector   
 - `u::AbstractArray`: control vector   
 - `t::Union{AbstractArray, Float64}`: time 
-- `ctrl::AdaptiveKMPC`: Adaptive KMPC struct  
+- `ctrl::AdaptiveKMPC`: Adaptive KMPC parameters
 """
 function update_buffer!(x::AbstractArray,u::AbstractArray,t::Union{AbstractArray, Float64},ctrl::AdaptiveKMPC)
     update_buffer!(x,u,t,ctrl.edmd_params.buffer)
@@ -222,7 +222,7 @@ Computes next control action.
 # Arguments
 - `x0::Vector`: current state   
 - `k::Int`: index in reference trajectors, corresponding to current time  
-- `ctrl::AdaptiveKMPC`: Adaptive KMPC struct   
+- `ctrl::AdaptiveKMPC`: Adaptive KMPC parameters  
 
 # Returns 
 - `uk::Vector`: next control action 
@@ -304,7 +304,7 @@ Builds the cost function, equivalent to eq (9), but for linearized dynamics.
 - `B::AbstractArray`: control matrix  
 - `K::AbstractArray`: constant offset vector   
 - `r::AbstractArray`: reference over next H steps
-- `weights::Weights`: struct with weight matrices   
+- `weights::Weights`: holds weight matrices   
 - `H::Int`: Prediction horizon 
 - `x0::Vector`: state at current operating point, see eq. (8)
 - `uₖ₋₁::Vector`: control vector applied at previous time step 
@@ -363,7 +363,7 @@ end
 """
     linearizationMPC(model::nPendulum,Q::Vector,Qf::Vector,R::Vector,r::AbstractArray,H::Int,constr::Constraints,h::Float64)
 
-Constructor for linearization MPC, with parameters for building and solving the MPC problem. 
+Linearization MPC parameters for building and solving the MPC problem. 
 
 # Arguments
 - `model::nPendulum`: holds parameters for nonlinear pendulum model   
@@ -372,7 +372,7 @@ Constructor for linearization MPC, with parameters for building and solving the 
 - `R::Vector`: Main diagonal of control effort weight matrix, equivalent to eq. (6a)
 - `r::AbstractArray`: reference trajectory 
 - `H::Int`: Prediction horizon 
-- `constr::Constraints`: struct holding constraint matrices  
+- `constr::Constraints`: Holds constraint matrices  
 - `h::Float64`: discretization step size    
 
 # Fields: 
@@ -380,7 +380,7 @@ Constructor for linearization MPC, with parameters for building and solving the 
 - `weights::Weights`: holds weight matrices  
 - `r::AbstractArray`: reference trajectory  
 - `H::Int`: Prediction horizon
-- `constr::Constraints`: struct holding constraint matrices
+- `constr::Constraints`: Holds constraint matrices
 - `uₖ₋₁::Vector`: control vector applied at previous time step  
 - `h::Float64`: discretization step size  
 - `solver`: OSQP solver object 
