@@ -9,26 +9,25 @@ Fixed size data buffer that holds joint positions, velocities and controls ('θ'
 
 # Field 
 - `θ::Vector{CircularBuffer{Float64}}`: Holds angular positions
-- `v::Vector{CircularBuffer{Float64}}`: Holds angular velocities
+- `ω::Vector{CircularBuffer{Float64}}`: Holds angular velocities
 - `u::Vector{CircularBuffer{Float64}}`: Holds controls 
-- `t::CircularBuffer{Float64}`: Holds time stamps 
 - `t::CircularBuffer{Float64}`: Holds time stamps 
 - `N::Int`: Buffer size or memory of the system
 - `m::Int`: DOF
 """
 mutable struct Databuffer
     θ::Vector{CircularBuffer{Float64}}
-    v::Vector{CircularBuffer{Float64}}
+    ω::Vector{CircularBuffer{Float64}}
     u::Vector{CircularBuffer{Float64}}
     t::CircularBuffer{Float64}    
     N::Int
     m::Int
     function Databuffer(N,m)
         θ = [CircularBuffer{Float64}(N)   for _ in 1:m]
-        v = [CircularBuffer{Float64}(N)   for _ in 1:m]
+        ω = [CircularBuffer{Float64}(N)   for _ in 1:m]
         u = [CircularBuffer{Float64}(N-1) for _ in 1:m]
         t = CircularBuffer{Float64}(N)
-        new(θ,v,u,t,N,m)
+        new(θ,ω,u,t,N,m)
     end 
 end 
 
@@ -55,7 +54,7 @@ function update_buffer!(x::AbstractArray, u::AbstractArray, t::Union{AbstractArr
         end 
         for j in 1:m
             push!(buffer.θ[j], x[j,i])
-            push!(buffer.v[j], x[j+m,i])            
+            push!(buffer.ω[j], x[j+m,i])            
         end 
     end 
     for i in 1:Nu
@@ -135,10 +134,10 @@ function get_buffer_data(buffer::Databuffer)
     
     for i in 1:buffer.m        
         X[i,:]   = buffer.θ[i][1:end-1]'
-        X[i+buffer.m,:] = buffer.v[i][1:end-1]'
+        X[i+buffer.m,:] = buffer.ω[i][1:end-1]'
 
         X⁺[i,:]   = buffer.θ[i][2:end]'
-        X⁺[i+buffer.m,:] = buffer.v[i][2:end]'
+        X⁺[i+buffer.m,:] = buffer.ω[i][2:end]'
 
         U[i,:] = buffer.u[i]'
     end 
@@ -157,7 +156,8 @@ Performs extended dynamic mode decomposition and returns a lifted state space mo
 # Returns 
 - `A::AbstractArray`: state transition matrix  
 - `B::AbstractArray`: control matrix  
-"""function EDMD(param::EDMDParameters)
+"""
+function EDMD(param::EDMDParameters)
     p = param.dict.p
     m = param.buffer.m
     N = param.buffer.N

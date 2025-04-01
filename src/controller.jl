@@ -1,12 +1,11 @@
-## Code for adaptive and static KMPC 
 """
     Weights(Q::Vector, Qf::Vector, R::Vector, H::Int)
 
 Holds MPC weight matrices. 
 
 # Arguments
-- `Q::Vector`: Main diagonal of tracking error-weight matrix, see eq. (6a)  
-- `Qf::Vector`: Main diagonal of tracking error-weight matrix for the final state 
+- `Q::Vector`: Main diagonal of tracking error weight matrix, see eq. (6a)  
+- `Qf::Vector`: Main diagonal of tracking error weight matrix for the final state 
 - `R::Vector`: Main diagonal of control effort weight matrix, see eq. (6a)
 - `H::Int`: Prediction horizon 
 """
@@ -40,13 +39,13 @@ Builds prediction matrices, see eq.(8).
 function build_predmat(Â::AbstractArray, B̂::AbstractArray, H::Int)
     n = size(Â,1)
     m = size(B̂,2)        
-    A_bold=zeros(H*n,n);
-    B_bold=zeros(H*n,H*m);
+    A_bold=zeros(H*n,n)
+    B_bold=zeros(H*n,H*m)
     for i=1:H
-        A_bold[(1+(i-1)*n):i*n,1:n]=Â^i;
+        A_bold[(1+(i-1)*n):i*n,1:n]=Â^i
         for j=1:H            
             if(i>=j)                
-                B_bold[(1+(i-1)*n):i*n,(1+(j-1)*m):j*m] = Â^(i-j)*B̂;                
+                B_bold[(1+(i-1)*n):i*n,(1+(j-1)*m):j*m] = Â^(i-j)*B̂                
             end
         end
     end
