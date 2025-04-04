@@ -1,7 +1,5 @@
 module AdaptiveKoopmanMPC
 
-greet() = print("Have fun experimenting with adaptive Koopman MPC!")
-
 # dependencies 
 using LinearAlgebra
 using OSQP 
@@ -27,5 +25,7 @@ export Constraints, AdaptiveKMPC, get_control, linearizationMPC
 
 include("plotting.jl")       
 export plot_tracking_results, plot_performance_metrics
+
+println("Have fun experimenting with adaptive Koopman MPC!")
 
 end # module AdaptiveKoopmanMPC
