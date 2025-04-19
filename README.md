@@ -1,6 +1,8 @@
 # adaptive-koopman-mpc
 This repository contains supplementary material to the paper "Adaptive Koopman Model Predictive Control of Simple Serial Robots" (submitted to IROS 2025). 
 
+Preprint: [https://arxiv.org/abs/2503.17902](https://arxiv.org/abs/2503.17902)
+
 ### Real system experiments  
 To test the adaptive Koopman Model Predictive Control (KMPC) algorithm, trajectory tracking experiments were conducted on a 1R and a belt-driven 2R robot. The following video shows an experiment on the 2R system, which demonstrates the controllers ability to reject force disturbances. 
 
