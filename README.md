@@ -1,5 +1,5 @@
 # adaptive-koopman-mpc
-This repository contains supplementary material to the paper "Adaptive Koopman Model Predictive Control of Simple Serial Robots" (submitted to IROS 2025). 
+This repository contains supplementary material to the paper "Adaptive Koopman Model Predictive Control of Simple Serial Robots". 
 
 Preprint: [https://arxiv.org/abs/2503.17902](https://arxiv.org/abs/2503.17902)
 
